@@ -70,10 +70,3 @@ router.get('/areas', verifyToken, async (req, res) => {
 });
 
 module.exports = router;
-cd path\to\ngo
-git init
-git add .
-git commit -m "Initial NGO backend commit"
-git branch -M main
-git remote add origin https://github.com/LuvVerma24/Ngo-Backend
-git push -u origin main
