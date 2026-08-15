@@ -8,6 +8,7 @@ const { storage } = require('../config/cloudinary');
 const router = express.Router();
 const upload = multer({ storage: storage });
 
+// 1. CREATE AREA — manager only
 router.post('/areas', verifyToken, checkRole('manager'), async (req, res) => {
   try {
     const { address } = req.body;
@@ -19,6 +20,7 @@ router.post('/areas', verifyToken, checkRole('manager'), async (req, res) => {
   }
 });
 
+// 2. GET LIST OF VOLUNTEERS — manager only (for the assignment dropdown)
 router.get('/volunteers', verifyToken, checkRole('manager'), async (req, res) => {
   try {
     const volunteers = await User.find({ role: 'volunteer' }).select('name email');
@@ -28,6 +30,7 @@ router.get('/volunteers', verifyToken, checkRole('manager'), async (req, res) =>
   }
 });
 
+// 3. ASSIGN VOLUNTEER TO AREA — manager only
 router.put('/areas/:id/assign', verifyToken, checkRole('manager'), async (req, res) => {
   try {
     const { volunteerId } = req.body;
@@ -42,7 +45,17 @@ router.put('/areas/:id/assign', verifyToken, checkRole('manager'), async (req, r
   }
 });
 
-router.put('/areas/:id/visit', verifyToken, checkRole('volunteer'), upload.single('photo'), async (req, res) => {
+// 4. SUBMIT VISIT — volunteer only, and only for THEIR assigned area
+// upload.single('photo') is wrapped manually so we can catch its errors (e.g. bad file type)
+router.put('/areas/:id/visit', verifyToken, checkRole('volunteer'), (req, res, next) => {
+  upload.single('photo')(req, res, (err) => {
+    if (err) {
+      console.error('Upload error:', err.message);
+      return res.status(400).json({ message: 'Photo upload failed', error: err.message });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
     const area = await Area.findById(req.params.id);
 
@@ -66,6 +79,7 @@ router.put('/areas/:id/visit', verifyToken, checkRole('volunteer'), upload.singl
   }
 });
 
+// 5. GET AREAS — behavior depends on role
 router.get('/areas', verifyToken, async (req, res) => {
   try {
     let areas;
