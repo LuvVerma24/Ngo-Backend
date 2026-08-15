@@ -1,9 +1,12 @@
 const express = require('express');
+const multer = require('multer');
 const Area = require('../models/Area');
 const User = require('../models/User');
 const { verifyToken, checkRole } = require('../middleware/authMiddleware');
+const { storage } = require('../config/cloudinary');
 
 const router = express.Router();
+const upload = multer({ storage: storage });
 
 router.post('/areas', verifyToken, checkRole('manager'), async (req, res) => {
   try {
@@ -39,16 +42,24 @@ router.put('/areas/:id/assign', verifyToken, checkRole('manager'), async (req, r
   }
 });
 
-router.put('/areas/:id/visit', verifyToken, checkRole('volunteer'), async (req, res) => {
+router.put('/areas/:id/visit', verifyToken, checkRole('volunteer'), upload.single('photo'), async (req, res) => {
   try {
     const area = await Area.findById(req.params.id);
+
     if (area.assignedTo.toString() !== req.user.userId) {
       return res.status(403).json({ message: 'This area is not assigned to you' });
     }
+
     const { oldPeopleCount } = req.body;
     area.oldPeopleCount = oldPeopleCount;
     area.lastVisitedDate = new Date();
+
+    if (req.file) {
+      area.visitProofPhoto = req.file.path;
+    }
+
     await area.save();
+
     res.status(200).json({ message: 'Visit submitted', area });
   } catch (err) {
     res.status(500).json({ message: 'Error', error: err.message });
